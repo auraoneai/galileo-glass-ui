@@ -1,0 +1,30 @@
+# Managed by org automation: one-way mirror GitHub -> GitLab.
+# GitHub is the source of truth. Do not edit by hand.
+name: mirror-to-gitlab
+on:
+  push:
+    branches: ['main']
+    tags: ['**']
+  schedule:
+    - cron: '23 5 * * *'  # daily full reconcile of all refs
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mirror-to-gitlab
+  cancel-in-progress: true
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Push all refs to GitLab mirror
+        run: |
+          git remote add gitlab "${{ secrets.GITLAB_MIRROR_URL }}"
+          # Prune pass first; if a protected/default ref blocks pruning, fall
+          # back to a plain push so content still syncs (prune retried next run).
+          git push gitlab --force --all --prune || git push gitlab --force --all
+          git push gitlab --force --tags
